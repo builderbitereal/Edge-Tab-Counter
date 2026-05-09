@@ -14,6 +14,7 @@ const RESTRICTED_PROTOCOLS = new Set([
 ]);
 
 const pendingWindowUpdates = new Map();
+const iconDataCache = new Map();
 let settingsCache = null;
 
 function getRuntimeError() {
@@ -34,6 +35,18 @@ function tabsQuery(queryInfo) {
 
 function windowsGetAll(getInfo) {
   return new Promise((resolve) => chrome.windows.getAll(getInfo, resolve));
+}
+
+function executeContentScript(tabId) {
+  return new Promise((resolve) => {
+    chrome.scripting.executeScript(
+      {
+        target: { tabId },
+        files: ["src/content/tab-number-favicon.js"]
+      },
+      () => resolve(!getRuntimeError())
+    );
+  });
 }
 
 async function getSettings() {
@@ -82,24 +95,175 @@ function safeSetTitle(tabId, title) {
   });
 }
 
-function sendNumberToTab(tab, number, enabled) {
+function sendTabMessage(tabId, payload) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, payload, () => {
+      resolve(!getRuntimeError());
+    });
+  });
+}
+
+async function sendNumberToTab(tab, number, enabled) {
   const url = tab.url || tab.pendingUrl || "";
 
   if (typeof tab.id !== "number" || !isInjectableUrl(url)) {
     return;
   }
 
-  chrome.tabs.sendMessage(
-    tab.id,
-    {
-      type: "EDGE_TAB_COUNTER_SET_NUMBER",
-      number,
-      enabled
-    },
-    () => {
-      getRuntimeError();
+  const settings = await getSettings();
+  const payload = {
+    type: "EDGE_TAB_COUNTER_SET_NUMBER",
+    number,
+    enabled,
+    badgeColor: settings.badgeColor
+  };
+
+  const delivered = await sendTabMessage(tab.id, payload);
+  if (delivered || !enabled) {
+    return;
+  }
+
+  const injected = await executeContentScript(tab.id);
+  if (injected) {
+    await sendTabMessage(tab.id, payload);
+  }
+}
+
+function escapeSvgAttribute(value) {
+  return String(value).replace(/[&<>"']/g, (character) => {
+    const replacements = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&apos;"
+    };
+    return replacements[character];
+  });
+}
+
+function escapeSvgText(value) {
+  return String(value).replace(/[&<>"']/g, (character) => {
+    const replacements = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&apos;"
+    };
+    return replacements[character];
+  });
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function normalizeIconUrl(iconUrl) {
+  if (!iconUrl || typeof iconUrl !== "string") {
+    return "";
+  }
+
+  if (iconUrl.startsWith("data:image/")) {
+    return iconUrl;
+  }
+
+  try {
+    const url = new URL(iconUrl);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return url.href;
     }
-  );
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+async function imageUrlToDataUrl(iconUrl) {
+  const normalized = normalizeIconUrl(iconUrl);
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized.startsWith("data:image/")) {
+    return normalized;
+  }
+
+  const response = await fetch(normalized, {
+    cache: "force-cache",
+    credentials: "omit"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to load favicon: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "image/png";
+  const buffer = await response.arrayBuffer();
+  return `data:${contentType};base64,${arrayBufferToBase64(buffer)}`;
+}
+
+function createBadgedSvgDataUrl(number, baseIconDataUrl, badgeColor) {
+  const numberText = escapeSvgText(number);
+  const color = /^#[0-9a-f]{6}$/i.test(badgeColor) ? badgeColor : DEFAULT_SETTINGS.badgeColor;
+  const fontSize = String(number).length > 2 ? 20 : String(number).length === 2 ? 23 : 28;
+  const baseImage = baseIconDataUrl
+    ? `<image href="${escapeSvgAttribute(baseIconDataUrl)}" x="2" y="2" width="60" height="60" preserveAspectRatio="xMidYMid meet"/>`
+    : '<rect x="2" y="2" width="60" height="60" rx="12" fill="#f8fafc"/><path d="M18 20h28v24H18z" fill="#94a3b8"/>';
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
+    baseImage,
+    '<circle cx="46" cy="46" r="18" fill="#ffffff"/>',
+    `<circle cx="46" cy="46" r="15.5" fill="${color}"/>`,
+    `<text x="46" y="47.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff">${numberText}</text>`,
+    "</svg>"
+  ].join("");
+
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function rememberIconCache(key, value) {
+  iconDataCache.set(key, value);
+  if (iconDataCache.size <= 300) {
+    return;
+  }
+
+  const firstKey = iconDataCache.keys().next().value;
+  iconDataCache.delete(firstKey);
+}
+
+async function composeBadgedIcon({ number, iconUrl, badgeColor }) {
+  const normalizedIconUrl = normalizeIconUrl(iconUrl);
+  const cacheKey = JSON.stringify({
+    number,
+    iconUrl: normalizedIconUrl,
+    badgeColor
+  });
+
+  if (iconDataCache.has(cacheKey)) {
+    return iconDataCache.get(cacheKey);
+  }
+
+  let baseIconDataUrl = "";
+  try {
+    baseIconDataUrl = await imageUrlToDataUrl(normalizedIconUrl);
+  } catch {
+    baseIconDataUrl = "";
+  }
+
+  const dataUrl = createBadgedSvgDataUrl(number, baseIconDataUrl, badgeColor);
+  rememberIconCache(cacheKey, dataUrl);
+  return dataUrl;
 }
 
 async function updateWindow(windowId) {
@@ -221,10 +385,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
 
+      const settings = await getSettings();
       sendResponse({
         ok: true,
         number: index + 1,
-        enabled: (await getSettings()).showFaviconNumbers
+        enabled: settings.showFaviconNumbers,
+        badgeColor: settings.badgeColor
+      });
+    })();
+
+    return true;
+  }
+
+  if (message.type === "EDGE_TAB_COUNTER_COMPOSE_ICON") {
+    (async () => {
+      const settings = await getSettings();
+      const iconDataUrl = await composeBadgedIcon({
+        number: message.number,
+        iconUrl: message.iconUrl,
+        badgeColor: message.badgeColor || settings.badgeColor
+      });
+
+      sendResponse({
+        ok: true,
+        iconDataUrl
       });
     })();
 

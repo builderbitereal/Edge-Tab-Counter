@@ -27,8 +27,13 @@ Edge Tab Counter is a Manifest V3 Microsoft Edge extension.
 2. When a window changes, the service worker sorts its tabs by `index`.
 3. Each tab receives its one-based number.
 4. Supported pages receive a content-script message that updates only the favicon.
-5. The extension action badge is updated per tab as a fallback and active-tab cue.
+5. The content script keeps the original site favicon links and asks the background worker for a merged icon with a small number badge.
+6. The extension action badge is updated per tab as a fallback and active-tab cue.
 
 ## Title Safety
 
 The extension never writes to `document.title` and never prefixes the page title. This preserves tab titles for users, search pages, pinned tabs, and web apps.
+
+## Existing Tabs
+
+The background worker uses the `scripting` permission to inject the content script into already-open supported tabs after install or reload. This lets the tab number appear without manually reloading each page.

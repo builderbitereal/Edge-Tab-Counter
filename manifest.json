@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Edge Tab Counter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Instantly number Microsoft Edge tabs without changing page titles. Built by BuilderBite.",
   "author": "BuilderBite",
   "homepage_url": "https://builderbite.com/",
   "permissions": [
+    "scripting",
     "storage",
     "tabs"
   ],

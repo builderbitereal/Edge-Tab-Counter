@@ -6,8 +6,9 @@ Edge Tab Counter is a lightweight Microsoft Edge extension that instantly number
 
 - Real-time tab count detection when tabs open, close, move, reload, or switch windows.
 - Shows tab order as plain numbers: first tab is `1`, second tab is `2`, and so on.
+- Preserves the original site favicon with a small number badge on top.
 - Keeps the original page title untouched.
-- Uses a numbered favicon on supported web pages and a toolbar badge for the active tab.
+- Uses a badged site favicon on supported web pages and a toolbar badge for the active tab.
 - Includes a popup with a numbered current-window tab list.
 - Privacy-friendly: no analytics, no remote tracking, no data upload.
 
@@ -35,7 +36,7 @@ The zip file will be created in `dist/` and can be uploaded to a GitHub Release 
 
 ## Browser Limitations
 
-Microsoft Edge does not allow extensions to draw custom labels directly inside every native browser tab without changing the page title. Edge Tab Counter avoids title changes by using a numbered favicon on supported pages. Internal pages such as `edge://settings`, extension store pages, and some restricted documents cannot receive content-script changes, so the toolbar badge remains the fallback.
+Microsoft Edge does not allow extensions to draw custom labels directly inside every native browser tab without changing the page title. Edge Tab Counter avoids title changes by preserving the site favicon and adding a small number badge on supported pages. Internal pages such as `edge://settings`, extension store pages, and some restricted documents cannot receive content-script changes, so the toolbar badge remains the fallback.
 
 ## Privacy
 
