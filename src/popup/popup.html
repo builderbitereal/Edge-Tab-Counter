@@ -27,7 +27,7 @@
         <label class="switch-row">
           <span>
             <strong>Tab favicon numbers</strong>
-            <small>Shows only the number in each supported tab.</small>
+            <small>Shows a large number in each supported tab.</small>
           </span>
           <input id="faviconToggle" type="checkbox">
         </label>
@@ -35,7 +35,7 @@
         <label class="switch-row">
           <span>
             <strong>Toolbar badge</strong>
-            <small>Shows the active tab number on the extension icon.</small>
+            <small>Adds badge text beside the numbered extension icon.</small>
           </span>
           <input id="badgeToggle" type="checkbox">
         </label>
@@ -49,7 +49,7 @@
         <ol id="tabList" class="tab-list"></ol>
       </section>
 
-      <p class="note">Edge blocks extensions on internal pages like edge://settings. Browser titles are never changed.</p>
+      <p class="note">Edge blocks favicon edits on internal pages like edge://settings, so the extension icon always carries the tab number too.</p>
     </main>
     <script src="popup.js"></script>
   </body>

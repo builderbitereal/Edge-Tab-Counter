@@ -4,6 +4,13 @@ const DEFAULT_SETTINGS = Object.freeze({
   badgeColor: "#0f766e"
 });
 
+const DEFAULT_ACTION_ICON = Object.freeze({
+  16: "assets/icons/icon-16.png",
+  32: "assets/icons/icon-32.png",
+  48: "assets/icons/icon-48.png",
+  128: "assets/icons/icon-128.png"
+});
+
 const RESTRICTED_PROTOCOLS = new Set([
   "edge:",
   "chrome:",
@@ -15,6 +22,7 @@ const RESTRICTED_PROTOCOLS = new Set([
 
 const pendingWindowUpdates = new Map();
 const iconDataCache = new Map();
+const actionIconCache = new Map();
 let settingsCache = null;
 
 function getRuntimeError() {
@@ -91,6 +99,12 @@ function safeSetBadge(tabId, text) {
 
 function safeSetTitle(tabId, title) {
   chrome.action.setTitle({ tabId, title }, () => {
+    getRuntimeError();
+  });
+}
+
+function safeSetActionIcon(tabId, icon) {
+  chrome.action.setIcon({ tabId, ...icon }, () => {
     getRuntimeError();
   });
 }
@@ -216,20 +230,97 @@ async function imageUrlToDataUrl(iconUrl) {
 function createBadgedSvgDataUrl(number, baseIconDataUrl, badgeColor) {
   const numberText = escapeSvgText(number);
   const color = /^#[0-9a-f]{6}$/i.test(badgeColor) ? badgeColor : DEFAULT_SETTINGS.badgeColor;
-  const fontSize = String(number).length > 2 ? 20 : String(number).length === 2 ? 23 : 28;
+  const numberLength = String(number).length;
+  const fontSize = numberLength > 2 ? 28 : numberLength === 2 ? 36 : 46;
   const baseImage = baseIconDataUrl
-    ? `<image href="${escapeSvgAttribute(baseIconDataUrl)}" x="2" y="2" width="60" height="60" preserveAspectRatio="xMidYMid meet"/>`
-    : '<rect x="2" y="2" width="60" height="60" rx="12" fill="#f8fafc"/><path d="M18 20h28v24H18z" fill="#94a3b8"/>';
+    ? `<image href="${escapeSvgAttribute(baseIconDataUrl)}" x="1" y="1" width="62" height="62" preserveAspectRatio="xMidYMid meet" opacity="0.42"/>`
+    : '<rect x="1" y="1" width="62" height="62" rx="12" fill="#f8fafc"/><path d="M18 20h28v24H18z" fill="#94a3b8"/>';
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
     baseImage,
-    '<circle cx="46" cy="46" r="18" fill="#ffffff"/>',
-    `<circle cx="46" cy="46" r="15.5" fill="${color}"/>`,
-    `<text x="46" y="47.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff">${numberText}</text>`,
+    '<circle cx="32" cy="32" r="31" fill="#ffffff"/>',
+    `<circle cx="32" cy="32" r="27.5" fill="${color}"/>`,
+    `<text x="32" y="34" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="900" fill="#ffffff">${numberText}</text>`,
     "</svg>"
   ].join("");
 
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function createNumberedActionImageData(number, badgeColor, size) {
+  if (typeof OffscreenCanvas !== "function") {
+    return null;
+  }
+
+  const numberText = String(number);
+  const color = /^#[0-9a-f]{6}$/i.test(badgeColor) ? badgeColor : DEFAULT_SETTINGS.badgeColor;
+  const canvas = new OffscreenCanvas(size, size);
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return null;
+  }
+
+  context.clearRect(0, 0, size, size);
+  drawRoundedRect(context, 0, 0, size, size, Math.max(4, size * 0.22));
+  context.fillStyle = color;
+  context.fill();
+
+  context.strokeStyle = "#ffffff";
+  context.lineWidth = Math.max(1.5, size * 0.07);
+  drawRoundedRect(context, context.lineWidth / 2, context.lineWidth / 2, size - context.lineWidth, size - context.lineWidth, Math.max(4, size * 0.2));
+  context.stroke();
+
+  const fontSize = Math.floor(size * (numberText.length > 2 ? 0.43 : numberText.length === 2 ? 0.52 : 0.66));
+  context.fillStyle = "#ffffff";
+  context.font = `900 ${fontSize}px Arial, Helvetica, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(numberText, size / 2, size / 2 + size * 0.04, size * 0.86);
+
+  return context.getImageData(0, 0, size, size);
+}
+
+function createNumberedActionIcon(number, badgeColor) {
+  const cacheKey = `${number}|${badgeColor}`;
+  if (actionIconCache.has(cacheKey)) {
+    return actionIconCache.get(cacheKey);
+  }
+
+  const imageData = {};
+
+  [16, 32, 48, 128].forEach((size) => {
+    const icon = createNumberedActionImageData(number, badgeColor, size);
+    if (icon) {
+      imageData[size] = icon;
+    }
+  });
+
+  const icon = Object.keys(imageData).length ? { imageData } : { path: DEFAULT_ACTION_ICON };
+  actionIconCache.set(cacheKey, icon);
+
+  if (actionIconCache.size > 300) {
+    const firstKey = actionIconCache.keys().next().value;
+    actionIconCache.delete(firstKey);
+  }
+
+  return icon;
 }
 
 function rememberIconCache(key, value) {
@@ -287,6 +378,7 @@ async function updateWindow(windowId) {
     const number = tabIndex + 1;
     const text = settings.showToolbarBadge ? String(number) : "";
 
+    safeSetActionIcon(tab.id, createNumberedActionIcon(number, settings.badgeColor));
     safeSetBadge(tab.id, text);
     safeSetTitle(tab.id, `Edge Tab Counter: tab ${number} of ${tabs.length}`);
     sendNumberToTab(tab, number, settings.showFaviconNumbers);
