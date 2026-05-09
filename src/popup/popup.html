@@ -23,24 +23,6 @@
         </button>
       </header>
 
-      <section class="controls" aria-label="Counter settings">
-        <label class="switch-row">
-          <span>
-            <strong>Tab favicon numbers</strong>
-            <small>Shows a large number in each supported tab.</small>
-          </span>
-          <input id="faviconToggle" type="checkbox">
-        </label>
-
-        <label class="switch-row">
-          <span>
-            <strong>Toolbar badge</strong>
-            <small>Adds badge text beside the numbered extension icon.</small>
-          </span>
-          <input id="badgeToggle" type="checkbox">
-        </label>
-      </section>
-
       <section class="tabs-section" aria-label="Current window tabs">
         <div class="section-title">
           <h2>Current Window</h2>
@@ -49,7 +31,7 @@
         <ol id="tabList" class="tab-list"></ol>
       </section>
 
-      <p class="note">Edge blocks favicon edits on internal pages like edge://settings, so the extension icon always carries the tab number too.</p>
+      <p class="note">Supported pages show the number in the tab title. Protected browser pages still show it in the extension icon and badge.</p>
     </main>
     <script src="popup.js"></script>
   </body>

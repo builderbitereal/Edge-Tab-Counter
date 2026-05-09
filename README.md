@@ -1,15 +1,15 @@
 # Edge Tab Counter
 
-Edge Tab Counter is a lightweight Microsoft Edge extension that instantly numbers tabs without changing the browser page title. It is built by [BuilderBite](https://builderbite.com/) for people who keep many tabs open and want a fast visual tab order.
+Edge Tab Counter is a lightweight Microsoft Edge extension that instantly numbers tabs in the browser title and extension icon. It is built by [BuilderBite](https://builderbite.com/) for people who keep many tabs open and want a fast visual tab order.
 
 ## Features
 
 - Real-time tab count detection when tabs open, close, move, reload, or switch windows.
 - Shows tab order as plain numbers: first tab is `1`, second tab is `2`, and so on.
-- Shows a large readable number on supported site favicons.
-- Keeps the original page title untouched.
-- Uses a generated numbered extension icon as a hard fallback for protected pages.
-- Uses a badged site favicon on supported web pages and a toolbar badge for the active tab.
+- Prefixes supported tab titles with the tab number, for example `5 | Page Title`.
+- Shows a large readable number on the extension icon for the current tab.
+- Does not edit favicons.
+- Uses a generated numbered extension icon and always-on toolbar badge.
 - Includes a popup with a numbered current-window tab list.
 - Privacy-friendly: no analytics, no remote tracking, no data upload.
 
@@ -37,7 +37,7 @@ The zip file will be created in `dist/` and can be uploaded to a GitHub Release 
 
 ## Browser Limitations
 
-Microsoft Edge does not allow extensions to draw custom labels directly inside every native browser tab without changing the page title. Edge Tab Counter avoids title changes by adding a large number to the site favicon on supported pages. Internal pages such as `edge://settings`, extension store pages, and some restricted documents cannot receive content-script favicon changes, so the extension-owned toolbar icon and badge remain the guaranteed fallback.
+Microsoft Edge does not allow extensions to draw custom labels directly inside every native browser tab without using either the page title or favicon. Edge Tab Counter puts the number at the start of supported page titles so it appears immediately after the favicon in the tab strip. Browser-protected pages such as `edge://settings` cannot receive title edits, so the numbered extension icon and badge remain the fallback there.
 
 ## Privacy
 

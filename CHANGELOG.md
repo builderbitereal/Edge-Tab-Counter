@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.4 - 2026-05-09
+
+- Added tab title numbering so supported tabs show the count immediately after the favicon area, like `5 | Page Title`.
+- Kept the independent numbered extension icon and always-on badge as the fallback for browser-protected pages.
+- Continued avoiding favicon edits completely.
+
+## 1.0.3 - 2026-05-09
+
+- Removed all favicon injection and page content-script behavior.
+- Removed `<all_urls>` host permission and the `scripting` permission.
+- Made tab numbering independent of page URLs by using only the browser extension icon and always-on badge.
+
 ## 1.0.2 - 2026-05-09
 
 - Added a generated per-tab extension action icon so every tab has a visible tab-order number even when Edge blocks page favicon injection.

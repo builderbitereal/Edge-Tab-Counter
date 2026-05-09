@@ -1,7 +1,7 @@
 {
   "name": "edge-tab-counter",
-  "version": "1.0.2",
-  "description": "Microsoft Edge extension that instantly numbers open tabs without changing page titles.",
+  "version": "1.0.4",
+  "description": "Microsoft Edge extension that instantly numbers open tabs in the tab title and toolbar icon.",
   "private": false,
   "homepage": "https://builderbite.com/",
   "author": "BuilderBite",

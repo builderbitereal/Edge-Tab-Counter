@@ -1,8 +1,7 @@
-const faviconToggle = document.querySelector("#faviconToggle");
-const badgeToggle = document.querySelector("#badgeToggle");
 const refreshButton = document.querySelector("#refreshButton");
 const tabList = document.querySelector("#tabList");
 const tabTotal = document.querySelector("#tabTotal");
+const TITLE_PREFIX_PATTERN = /^\d+\s\|\s/;
 
 function sendMessage(message) {
   return new Promise((resolve) => chrome.runtime.sendMessage(message, resolve));
@@ -37,11 +36,11 @@ function renderTabs(tabs) {
 
     const title = document.createElement("span");
     title.className = "tab-title";
-    title.textContent = tab.title;
+    title.textContent = tab.title.replace(TITLE_PREFIX_PATTERN, "") || "Untitled tab";
 
     const meta = document.createElement("small");
     meta.className = "tab-meta";
-    meta.textContent = tab.injectable ? formatUrl(tab.url) : `${formatUrl(tab.url)} - Edge protected page`;
+    meta.textContent = formatUrl(tab.url);
 
     textWrap.append(title, meta);
     item.append(number, textWrap);
@@ -50,8 +49,6 @@ function renderTabs(tabs) {
 }
 
 function applyState(state) {
-  faviconToggle.checked = Boolean(state.settings.showFaviconNumbers);
-  badgeToggle.checked = Boolean(state.settings.showToolbarBadge);
   renderTabs(state.tabs || []);
 }
 
@@ -59,25 +56,6 @@ async function loadState() {
   const state = await sendMessage({ type: "EDGE_TAB_COUNTER_GET_POPUP_STATE" });
   applyState(state);
 }
-
-async function updateSettings(settings) {
-  const response = await sendMessage({
-    type: "EDGE_TAB_COUNTER_SET_SETTINGS",
-    settings
-  });
-
-  if (response?.settings) {
-    await loadState();
-  }
-}
-
-faviconToggle.addEventListener("change", () => {
-  updateSettings({ showFaviconNumbers: faviconToggle.checked });
-});
-
-badgeToggle.addEventListener("change", () => {
-  updateSettings({ showToolbarBadge: badgeToggle.checked });
-});
 
 refreshButton.addEventListener("click", async () => {
   const state = await sendMessage({ type: "EDGE_TAB_COUNTER_REFRESH" });
