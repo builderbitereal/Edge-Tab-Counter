@@ -1,0 +1,22 @@
+{
+  "name": "edge-tab-counter",
+  "version": "1.0.0",
+  "description": "Microsoft Edge extension that instantly numbers open tabs without changing page titles.",
+  "private": false,
+  "homepage": "https://builderbite.com/",
+  "author": "BuilderBite",
+  "license": "MIT",
+  "keywords": [
+    "edge-extension",
+    "microsoft-edge",
+    "tab-counter",
+    "tab-manager",
+    "browser-extension",
+    "productivity",
+    "manifest-v3",
+    "builderbite"
+  ],
+  "scripts": {
+    "package": "powershell -ExecutionPolicy Bypass -File scripts/package-extension.ps1"
+  }
+}

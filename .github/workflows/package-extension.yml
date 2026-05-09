@@ -1,0 +1,25 @@
+name: Package Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package Edge extension
+        shell: pwsh
+        run: .\scripts\package-extension.ps1
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-tab-counter
+          path: dist/*.zip
